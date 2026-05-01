@@ -1,11 +1,13 @@
 
-# 🎯 Layoff Risk Prediction API
+# 🛡️ CareerShield: MLOps Layoff Risk Platform
 
-**MLOps platform** predicting company layoff risk from industry, department, AI exposure, and workforce size. Built with **TensorFlow** + **FastAPI**, containerized with **Docker**.
+**End-to-end MLOps platform** predicting company layoff risk from industry, department, AI exposure, and workforce size. Features a **React/Vite Frontend**, **FastAPI Backend**, **TensorFlow** models, and real-time telemetry with the **ELK Stack**, all containerized with **Docker Compose**.
 
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-2.16-orange.svg)](https://tensorflow.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green.svg)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org)
+[![ELK](https://img.shields.io/badge/ELK_Stack-8.11-yellow.svg)](https://elastic.co)
 
 ---
 
@@ -13,23 +15,19 @@
 
 ```
 layoff-risk-prediction/
-├── app.py                          # FastAPI inference server
-├── requirements.txt                # Python dependencies
-├── Dockerfile                     # Multi-stage Docker build
-├── README.md                      # This file
-├── models/                        # Trained artifacts
+├── frontend/                      # React/Vite UI Application
+│   ├── src/                       # React components & styles
+│   ├── Dockerfile                 # Frontend multi-stage build (Nginx)
+│   └── nginx.conf                 # Nginx configuration
+├── elk/                           # ELK Telemetry Stack
+│   └── logstash.conf              # Logstash UDP pipeline config
+├── models/                        # Trained artifacts & charts
 │   ├── layoff_risk_model.keras    # TensorFlow model
-│   ├── preprocessor.pkl           # Sklearn preprocessing pipeline
-│   ├── model_schema.json          # Feature schema & metadata
-│   ├── model_comparison.png       # CV vs Val AUC comparison
-│   ├── learning_curves.png        # Overfitting diagnosis
-│   ├── validation_curves.png      # ROC/PR/Confusion matrix
-│   ├── feature_importance.png     # Permutation importance
-│   ├── threshold_analysis.png     # F1 threshold tuning
-│   ├── test_evaluation.png        # Final test set evaluation
-│   ├── calibration.png            # Probability calibration
-│   ├── inference_results.png      # Sample predictions
-│   └── eda.png                    # Exploratory data analysis
+│   └── preprocessor.pkl           # Sklearn preprocessing pipeline
+├── app.py                         # FastAPI inference server
+├── requirements.txt               # Python dependencies
+├── Dockerfile                     # Backend Docker build
+├── docker-compose.yml             # Full-stack orchestration
 └── mlops-dataset-layoff-risk/     # Raw dataset
 ```
 
@@ -37,20 +35,24 @@ layoff-risk-prediction/
 
 ## 🚀 Quick Start
 
-### Option 1: Docker (Recommended)
+### Full Stack (Recommended)
+
+The easiest way to run the entire platform (Frontend, Backend, and ELK Stack) is using Docker Compose:
 
 ```bash
-# Build image
-docker build -t layoff-risk-api .
+# Build and start all services
+docker-compose up -d --build
 
-# Run container
-docker run -p 8000:8000 --name layoff-api layoff-risk-api
-
-# Test health endpoint
-curl http://localhost:8000/health
+# View logs
+docker-compose logs -f
 ```
 
-### Option 2: Local Python
+Once running, access the services at:
+- 🌐 **Frontend UI**: [http://localhost:80](http://localhost:80)
+- 🔌 **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- 📊 **Kibana Dashboards**: [http://localhost:5601](http://localhost:5601)
+
+### Local Development (Backend only)
 
 ```bash
 # Create virtual environment
@@ -154,72 +156,30 @@ curl -X POST "http://localhost:8000/predict" \
 
 ---
 
-## 🐳 Docker Guide
+## 🐳 Docker Architecture
 
-### Build & Run
+The project uses `docker-compose` to orchestrate 5 connected services:
 
-```bash
-# Build image (multi-stage, Python 3.12 slim)
-docker build -t layoff-risk-api:latest .
+1. **frontend**: Serves the compiled React UI via Nginx on port `80`.
+2. **backend**: FastAPI inference server on port `8000`, running the TensorFlow model. Sends logs to Logstash via the GELF driver.
+3. **elasticsearch**: Stores and indexes inference logs and application telemetry.
+4. **logstash**: Receives GELF logs from the backend via UDP `12201` and forwards them to Elasticsearch.
+5. **kibana**: Visualizes logs and inference metrics on port `5601`.
 
-# Run detached
-docker run -d -p 8000:8000 --name layoff-api layoff-risk-api:latest
-
-# View logs
-docker logs -f layoff-api
-
-# Stop & remove
-docker stop layoff-api && docker rm layoff-api
-```
-
-### Development Mode (volume mount for hot reload)
+### Managing Services
 
 ```bash
-docker run -p 8000:8000 \
-  -v $(pwd)/app.py:/app/app.py \
-  -v $(pwd)/models:/app/models \
-  layoff-risk-api:latest \
-  uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Production Deployment
-
-```bash
-# Run with multiple workers (no --reload)
-docker run -d -p 8000:8000 \
-  --restart unless-stopped \
-  --memory="2g" \
-  --cpus="2.0" \
-  --name layoff-api-prod \
-  layoff-risk-api:latest \
-  uvicorn app:app --host 0.0.0.0 --port 8000 --workers 4
-```
-
-### Docker Compose
-
-```yaml
-# docker-compose.yml
-version: "3.8"
-
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - MODELS_DIR=./models
-    volumes:
-      - ./models:/app/models
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-```
-
-```bash
+# Start all services
 docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# View logs for a specific service
+docker-compose logs -f frontend
+
+# Rebuild a specific service (e.g. backend) after code changes
+docker-compose up -d --build backend
 ```
 
 ---
