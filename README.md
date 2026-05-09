@@ -48,9 +48,14 @@ docker-compose logs -f
 ```
 
 Once running, access the services at:
-- 🌐 **Frontend UI**: [http://localhost:80](http://localhost:80)
-- 🔌 **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- 📊 **Kibana Dashboards**: [http://localhost:5601](http://localhost:5601)
+
+| Service | Port | URL |
+|---------|------|-----|
+| 🌐 **Frontend UI** | `80` | [http://localhost:80](http://localhost:80) |
+| 🔌 **Backend API Docs** | `8000` | [http://localhost:8000/docs](http://localhost:8000/docs) |
+| 📊 **Kibana Dashboard** | `5601` | [http://localhost:5601](http://localhost:5601) |
+| 📦 **Elasticsearch** | `9200` | [http://localhost:9200](http://localhost:9200) |
+| 🪵 **Logstash (GELF)** | `12201` | `udp://localhost:12201` |
 
 ### Local Development (Backend only)
 
