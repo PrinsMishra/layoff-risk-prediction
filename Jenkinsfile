@@ -16,58 +16,48 @@ pipeline {
 
         stage('2. Setup Environment') {
             steps {
-                dir('layoff-risk-prediction') {
-                    sh '''
-                    python3 -m venv venv || true
-                    . venv/bin/activate
-                    pip install -r requirements.txt
-                    '''
-                }
+                sh '''
+                python3 -m venv venv || true
+                . venv/bin/activate
+                pip install -r requirements.txt
+                '''
             }
         }
 
         stage('3. Retrain Model') {
             steps {
-                dir('layoff-risk-prediction') {
-                    sh '''
-                    . venv/bin/activate
-                    python scripts/retrain_pipeline.py --data mlops-dataset-layoff-risk/tech_layoffs_2025_2026.csv --models-dir models
-                    '''
-                }
+                sh '''
+                . venv/bin/activate
+                python scripts/retrain_pipeline.py --data mlops-dataset-layoff-risk/tech_layoffs_2025_2026.csv --models-dir models
+                '''
             }
         }
 
         stage('4. Validate Metrics') {
             steps {
-                dir('layoff-risk-prediction') {
-                    script {
-                        echo "Checking model quality metrics..."
-                        sh 'if [ -f "models/model_schema.json" ]; then echo "✅ Metrics validated."; else exit 1; fi'
-                    }
+                script {
+                    echo "Checking model quality metrics..."
+                    sh 'if [ -f "models/model_schema.json" ]; then echo "✅ Metrics validated."; else exit 1; fi'
                 }
             }
         }
 
         stage('5. Run Unit Tests') {
             steps {
-                dir('layoff-risk-prediction') {
-                    script {
-                        echo "Running Backend Unit Tests..."
-                        // We run a simple check to ensure app.py loads correctly
-                        sh '. venv/bin/activate && python -c "import app; print(\'✅ App load test passed\')"'
-                    }
+                script {
+                    echo "Running Backend Unit Tests..."
+                    // We run a simple check to ensure app.py loads correctly
+                    sh '. venv/bin/activate && python -c "import app; print(\'✅ App load test passed\')"'
                 }
             }
         }
 
         stage('6. Build Docker Images') {
             steps {
-                dir('layoff-risk-prediction') {
-                    script {
-                        echo "Building images with Version: ${VERSION}"
-                        sh "docker build -t ${DOCKER_USER}/careershield-backend:${VERSION} -t ${DOCKER_USER}/careershield-backend:latest ."
-                        sh "docker build -t ${DOCKER_USER}/careershield-frontend:${VERSION} -t ${DOCKER_USER}/careershield-frontend:latest ./frontend"
-                    }
+                script {
+                    echo "Building images with Version: ${VERSION}"
+                    sh "docker build -t ${DOCKER_USER}/careershield-backend:${VERSION} -t ${DOCKER_USER}/careershield-backend:latest ."
+                    sh "docker build -t ${DOCKER_USER}/careershield-frontend:${VERSION} -t ${DOCKER_USER}/careershield-frontend:latest ./frontend"
                 }
             }
         }
@@ -93,10 +83,8 @@ pipeline {
 
         stage('8. Deploy Application') {
             steps {
-                dir('layoff-risk-prediction') {
-                    echo "Deploying newly built containers..."
-                    sh 'docker-compose up -d'
-                }
+                echo "Deploying newly built containers..."
+                sh 'docker-compose up -d'
             }
         }
 
