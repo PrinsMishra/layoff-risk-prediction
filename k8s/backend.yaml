@@ -5,7 +5,12 @@ metadata:
   labels:
     app: careershield-backend
 spec:
-  replicas: 1
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: careershield-backend
@@ -23,12 +28,21 @@ spec:
         env:
         - name: MODELS_DIR
           value: "./models" # The model is baked into the image by Jenkins now!
+        - name: LOGSTASH_HOST
+          value: "elk-service"
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
           initialDelaySeconds: 15
           periodSeconds: 30
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
 
 ---
 apiVersion: v1

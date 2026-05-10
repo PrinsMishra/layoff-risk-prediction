@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+data:
+  logstash.conf: |
+    input {
+      udp {
+        port => 12201
+        codec => json
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["http://localhost:9200"]
+        index => "careershield-logs-%{+YYYY.MM.dd}"
+      }
+      stdout { codec => rubydebug }
+    }

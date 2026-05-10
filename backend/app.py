@@ -38,6 +38,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Global Observability Counters
+# ─────────────────────────────────────────────────────────────────────────────
+_TOTAL_PREDICTIONS = 0
+_TOTAL_LATENCY_MS  = 0.0
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Structured JSON logger  — ELK / Logstash compatible
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -55,12 +61,27 @@ class _JsonFormatter(logging.Formatter):
 
 
 def _build_logger(name: str) -> logging.Logger:
-    handler = logging.StreamHandler()
-    handler.setFormatter(_JsonFormatter())
     logger = logging.getLogger(name)
-    logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     logger.propagate = False
+    
+    # 1. Console Handler (for kubectl logs)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(_JsonFormatter())
+    logger.addHandler(console_handler)
+    
+    # 2. Logstash UDP Handler (for ELK)
+    logstash_host = os.getenv("LOGSTASH_HOST")
+    if logstash_host:
+        try:
+            from logging.handlers import DatagramHandler
+            # Logstash is listening on UDP 12201
+            udp_handler = DatagramHandler(logstash_host, 12201)
+            udp_handler.setFormatter(_JsonFormatter())
+            logger.addHandler(udp_handler)
+        except Exception as e:
+            print(f"Failed to initialize Logstash handler: {e}")
+            
     return logger
 
 
@@ -431,6 +452,7 @@ async def log_requests(request: Request, call_next):
     resp  = await call_next(request)
     ms    = round((time.perf_counter() - start) * 1000, 2)
     log.info("http", extra={"extra": {
+        "event": "http_request",
         "request_id": rid, "method": request.method,
         "path": request.url.path, "status": resp.status_code, "latency_ms": ms,
     }})
@@ -443,11 +465,28 @@ async def log_requests(request: Request, call_next):
 @app.get("/health", response_model=HealthResponse, tags=["Meta"])
 def health() -> HealthResponse:
     """Liveness probe."""
+    log.info("health_check", extra={"extra": {"event": "health_check"}})
     return HealthResponse(
         status="ok", model_loaded=_MODEL is not None,
         model_version=_schema.get("model_version", "unknown"),
         timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
+
+
+@app.get("/metrics", tags=["Observability"])
+def get_metrics() -> Dict[str, Any]:
+    """Expose internal performance metrics."""
+    avg_latency = 0.0
+    if _TOTAL_PREDICTIONS > 0:
+        avg_latency = round(_TOTAL_LATENCY_MS / _TOTAL_PREDICTIONS, 2)
+    
+    return {
+        "event":              "metrics_export",
+        "total_predictions":  _TOTAL_PREDICTIONS,
+        "average_latency_ms": avg_latency,
+        "model_version":      _schema.get("model_version", "unknown"),
+        "timestamp":          datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
 
 
 @app.get("/model/info", tags=["Meta"])
@@ -499,7 +538,12 @@ def predict(req: PredictRequest) -> PredictResponse:
         log.error("predict_error", extra={"extra": {"error": str(exc)}})
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+    global _TOTAL_PREDICTIONS, _TOTAL_LATENCY_MS
+    _TOTAL_PREDICTIONS += 1
+    _TOTAL_LATENCY_MS  += response.latency_ms
+
     log.info("prediction", extra={"extra": {
+        "event":            "prediction_event",
         "request_id":       response.request_id,
         "industry":         req.industry,
         "department":       req.department,
