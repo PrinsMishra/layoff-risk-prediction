@@ -5,6 +5,7 @@ pipeline {
         DOCKER_USER = 'prins05688'
         DOCKER_CREDS = 'dockerhub-credentials'
         VERSION = "v${BUILD_NUMBER}"
+        COMPOSE_PROJECT_NAME = 'careershield'
     }
 
     stages {
@@ -61,7 +62,7 @@ pipeline {
             }
         }
 
-        stage('5. Run Unit Tests') {
+        stage('6. Run Unit Tests') {
             steps {
                 script {
                     echo "Running Backend Unit Tests..."
@@ -71,7 +72,7 @@ pipeline {
             }
         }
 
-        stage('6. Build Docker Images') {
+        stage('7. Build Docker Images') {
             steps {
                 script {
                     echo "Building images with Version: ${VERSION}"
@@ -81,7 +82,7 @@ pipeline {
             }
         }
 
-        stage('7. Push Docker Images') {
+        stage('8. Push Docker Images') {
             steps {
                 script {
                     echo "Pushing Version ${VERSION} to Docker Hub..."
@@ -100,14 +101,17 @@ pipeline {
             }
         }
 
-        stage('8. Deploy Application') {
+        stage('9. Deploy Application') {
             steps {
                 echo "Deploying newly built containers..."
-                sh 'docker-compose up -d'
+                sh '''
+                docker-compose down --remove-orphans
+                docker-compose up -d --build
+                '''
             }
         }
 
-        stage('9. Health Check') {
+        stage('10. Health Check') {
             steps {
                 script {
                     echo "Waiting for API endpoint to respond..."
@@ -123,7 +127,7 @@ pipeline {
             }
         }
 
-        stage('10. Smoke Test') {
+        stage('11. Smoke Test') {
             steps {
                 script {
                     echo "Verifying AI Inference API..."
@@ -142,14 +146,14 @@ pipeline {
             }
         }
 
-        stage('11. Cleanup') {
+        stage('12. Cleanup') {
             steps {
                 echo "Cleaning up dangling images..."
                 sh 'docker image prune -f'
             }
         }
 
-        stage('12. Final Status') {
+        stage('13. Final Status') {
             steps {
                 echo "🚀 Deployment of ${VERSION} is LIVE and verified!"
             }
