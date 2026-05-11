@@ -136,19 +136,20 @@ pipeline {
         stage('11. Health Check') {
             steps {
                 script {
-                    echo "Waiting for Kubernetes Service (NodePort 30000) to respond..."
-                    sh '''
+                    def k8sHost = sh(script: "minikube ip || echo 'localhost'", returnStdout: true).trim()
+                    echo "Waiting for Kubernetes Service (${k8sHost}:30000) to respond..."
+                    sh """
                     count=0
-                    until $(curl --output /dev/null --silent --fail http://localhost:30000/health); do
-                        if [ $count -eq 12 ]; then 
+                    until \$(curl --output /dev/null --silent --fail http://${k8sHost}:30000/health); do
+                        if [ \$count -eq 12 ]; then 
                             echo "❌ Health check failed after 60 seconds."
                             exit 1 
                         fi
                         sleep 5
-                        count=$((count+1))
+                        count=\$((count+1))
                     done
-                    echo "✅ Backend is UP in Kubernetes!"
-                    '''
+                    echo "✅ Backend is UP in Kubernetes at ${k8sHost}!"
+                    """
                 }
             }
         }
@@ -156,19 +157,20 @@ pipeline {
         stage('12. Smoke Test') {
             steps {
                 script {
-                    echo "Verifying AI Inference API in Kubernetes..."
-                    sh '''
-                    RESPONSE=$(curl -s -X POST "http://localhost:30000/predict" \
+                    def k8sHost = sh(script: "minikube ip || echo 'localhost'", returnStdout: true).trim()
+                    echo "Verifying AI Inference API at ${k8sHost}:30000..."
+                    sh """
+                    RESPONSE=\$(curl -s -X POST "http://${k8sHost}:30000/predict" \
                       -H "Content-Type: application/json" \
                       -d '{"industry":"Software","department":"Engineering","ai_exposure":"Partial","total_employees":5000}')
                     
-                    if echo "$RESPONSE" | grep -q "risk_probability"; then
+                    if echo "\$RESPONSE" | grep -q "risk_probability"; then
                         echo "✅ Smoke Test Passed!"
                     else
-                        echo "❌ Unexpected response: $RESPONSE"
+                        echo "❌ Unexpected response: \$RESPONSE"
                         exit 1
                     fi
-                    '''
+                    """
                 }
             }
         }
