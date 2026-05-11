@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: prins05688/careershield-backend:latest
+        image: prins05688/careershield-backend:IMAGE_TAG
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
@@ -50,10 +50,11 @@ kind: Service
 metadata:
   name: backend
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: careershield-backend
   ports:
     - protocol: TCP
       port: 8000
       targetPort: 8000
+      nodePort: 30000

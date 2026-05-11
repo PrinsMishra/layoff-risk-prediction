@@ -101,27 +101,43 @@ pipeline {
             }
         }
 
-        stage('9. Deploy Application') {
+        stage('9. Deploy to Kubernetes') {
             steps {
-                echo "Deploying newly built containers..."
-                sh '''
-                docker-compose down --remove-orphans
-                docker-compose up -d --build
-                '''
+                script {
+                    echo "Deploying Version ${VERSION} to Kubernetes Cluster..."
+                    
+                    // Replace IMAGE_TAG placeholder with the current build version
+                    sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/backend.yaml"
+                    sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/frontend.yaml"
+                    
+                    // Apply all Kubernetes manifests
+                    sh "kubectl apply -f k8s/"
+                    
+                    // Verify rollout status
+                    sh "kubectl rollout status deployment/backend-deployment"
+                    sh "kubectl rollout status deployment/frontend-deployment"
+                    
+                    // Restore placeholders for next run
+                    sh "git checkout k8s/backend.yaml k8s/frontend.yaml"
+                }
             }
         }
 
         stage('10. Health Check') {
             steps {
                 script {
-                    echo "Waiting for API endpoint to respond..."
+                    echo "Waiting for Kubernetes Service (NodePort 30000) to respond..."
                     sh '''
                     count=0
-                    until $(curl --output /dev/null --silent --fail http://localhost:8000/health); do
-                        if [ $count -eq 12 ]; then exit 1; fi
+                    until $(curl --output /dev/null --silent --fail http://localhost:30000/health); do
+                        if [ $count -eq 12 ]; then 
+                            echo "❌ Health check failed after 60 seconds."
+                            exit 1 
+                        fi
                         sleep 5
                         count=$((count+1))
                     done
+                    echo "✅ Backend is UP in Kubernetes!"
                     '''
                 }
             }
@@ -130,15 +146,16 @@ pipeline {
         stage('11. Smoke Test') {
             steps {
                 script {
-                    echo "Verifying AI Inference API..."
+                    echo "Verifying AI Inference API in Kubernetes..."
                     sh '''
-                    RESPONSE=$(curl -s -X POST "http://localhost:8000/predict" \
+                    RESPONSE=$(curl -s -X POST "http://localhost:30000/predict" \
                       -H "Content-Type: application/json" \
                       -d '{"industry":"Software","department":"Engineering","ai_exposure":"Partial","total_employees":5000}')
                     
                     if echo "$RESPONSE" | grep -q "risk_probability"; then
                         echo "✅ Smoke Test Passed!"
                     else
+                        echo "❌ Unexpected response: $RESPONSE"
                         exit 1
                     fi
                     '''
