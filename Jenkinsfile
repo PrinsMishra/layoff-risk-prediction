@@ -101,7 +101,17 @@ pipeline {
             }
         }
 
-        stage('9. Deploy to Kubernetes') {
+        stage('9. Test K8s Connection') {
+            steps {
+                script {
+                    echo "Verifying Kubernetes connection from Jenkins..."
+                    sh 'kubectl cluster-info'
+                    sh 'kubectl get nodes'
+                }
+            }
+        }
+
+        stage('10. Deploy to Kubernetes') {
             steps {
                 script {
                     echo "Deploying Version ${VERSION} to Kubernetes Cluster..."
@@ -123,7 +133,7 @@ pipeline {
             }
         }
 
-        stage('10. Health Check') {
+        stage('11. Health Check') {
             steps {
                 script {
                     echo "Waiting for Kubernetes Service (NodePort 30000) to respond..."
@@ -143,7 +153,7 @@ pipeline {
             }
         }
 
-        stage('11. Smoke Test') {
+        stage('12. Smoke Test') {
             steps {
                 script {
                     echo "Verifying AI Inference API in Kubernetes..."
@@ -163,14 +173,14 @@ pipeline {
             }
         }
 
-        stage('12. Cleanup') {
+        stage('13. Cleanup') {
             steps {
                 echo "Cleaning up dangling images..."
                 sh 'docker image prune -f'
             }
         }
 
-        stage('13. Final Status') {
+        stage('14. Final Status') {
             steps {
                 echo "🚀 Deployment of ${VERSION} is LIVE and verified!"
             }
