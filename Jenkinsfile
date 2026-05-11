@@ -110,8 +110,8 @@ pipeline {
                     sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/backend.yaml"
                     sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/frontend.yaml"
                     
-                    // Apply all Kubernetes manifests
-                    sh "kubectl apply -f k8s/"
+                    // Apply all Kubernetes manifests (skip validation to avoid proxy/login redirects)
+                    sh "kubectl apply -f k8s/ --validate=false"
                     
                     // Verify rollout status
                     sh "kubectl rollout status deployment/backend-deployment"
