@@ -136,19 +136,31 @@ pipeline {
         stage('11. Health Check') {
             steps {
                 script {
-                    def k8sHost = sh(script: "minikube ip || echo 'localhost'", returnStdout: true).trim()
-                    echo "Waiting for Kubernetes Service (${k8sHost}:30000) to respond..."
+                    echo "Starting port-forward to backend service..."
+                    // Kill any existing port-forward processes to avoid port conflicts
+                    sh 'pkill -f "kubectl port-forward svc/backend-service" || true'
+                    
+                    // Start port-forward in background
+                    sh 'kubectl port-forward svc/backend-service 8000:8000 > /tmp/pf.log 2>&1 &'
+                    
+                    // Wait for the tunnel to stabilize
+                    sleep 10
+                    
+                    echo "Waiting for Backend Service (localhost:8000) to respond..."
                     sh """
                     count=0
-                    until \$(curl --output /dev/null --silent --fail http://${k8sHost}:30000/health); do
+                    until \$(curl --output /dev/null --silent --fail http://localhost:8000/health); do
                         if [ \$count -eq 12 ]; then 
                             echo "❌ Health check failed after 60 seconds."
+                            echo "Port-forward Logs:"
+                            cat /tmp/pf.log
                             exit 1 
                         fi
+                        echo "Waiting for backend..."
                         sleep 5
                         count=\$((count+1))
                     done
-                    echo "✅ Backend is UP in Kubernetes at ${k8sHost}!"
+                    echo "✅ Backend is UP and accessible via port-forward!"
                     """
                 }
             }
@@ -157,13 +169,14 @@ pipeline {
         stage('12. Smoke Test') {
             steps {
                 script {
-                    def k8sHost = sh(script: "minikube ip || echo 'localhost'", returnStdout: true).trim()
-                    echo "Verifying AI Inference API at ${k8sHost}:30000..."
+                    echo "Verifying AI Inference API at localhost:8000..."
                     sh """
-                    RESPONSE=\$(curl -s -X POST "http://${k8sHost}:30000/predict" \
+                    RESPONSE=\$(curl -s -X POST "http://localhost:8000/predict" \
                       -H "Content-Type: application/json" \
                       -d '{"industry":"Software","department":"Engineering","ai_exposure":"Partial","total_employees":5000}')
                     
+                    echo "API Response: \$RESPONSE"
+
                     if echo "\$RESPONSE" | grep -q "risk_probability"; then
                         echo "✅ Smoke Test Passed!"
                     else
@@ -171,6 +184,12 @@ pipeline {
                         exit 1
                     fi
                     """
+                }
+            }
+            post {
+                always {
+                    echo "Cleaning up port-forward..."
+                    sh 'pkill -f "kubectl port-forward svc/backend-service" || true'
                 }
             }
         }
