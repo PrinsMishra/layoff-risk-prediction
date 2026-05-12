@@ -13,7 +13,7 @@ RUN npm run build
 
 # Stage 2: Serve using Nginx
 # stage 3 : check for changes in the code
-
+# stage 4 : check for changes in the code
 FROM nginx:alpine
 
 # Remove default nginx static assets
