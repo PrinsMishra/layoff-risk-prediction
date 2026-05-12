@@ -25,12 +25,12 @@ spec:
         - name: xpack.security.enabled
           value: "false"
         - name: ES_JAVA_OPTS
-          value: "-Xms1g -Xmx1g"
+          value: "-Xms512m -Xmx512m"
         resources:
           limits:
-            memory: "2Gi"
-          requests:
             memory: "1Gi"
+          requests:
+            memory: "512Mi"
 
       - name: logstash
         image: docker.elastic.co/logstash/logstash:8.11.3
@@ -42,9 +42,9 @@ spec:
           mountPath: /usr/share/logstash/pipeline/
         resources:
           limits:
-            memory: "1Gi"
-          requests:
             memory: "512Mi"
+          requests:
+            memory: "256Mi"
 
       - name: kibana
         image: docker.elastic.co/kibana/kibana:8.11.3
@@ -55,9 +55,9 @@ spec:
           value: "http://localhost:9200"
         resources:
           limits:
-            memory: "1Gi"
-          requests:
             memory: "512Mi"
+          requests:
+            memory: "256Mi"
       volumes:
       - name: config-volume
         configMap:

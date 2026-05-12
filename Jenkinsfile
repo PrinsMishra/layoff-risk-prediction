@@ -115,13 +115,14 @@ pipeline {
             steps {
                 script {
                     echo "Deploying Version ${VERSION} to Kubernetes Cluster..."
+                    sh "docker-compose down || true"
                     
                     // Replace IMAGE_TAG placeholder with the current build version
                     sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/backend.yaml"
                     sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/frontend.yaml"
                     
                     // Apply all Kubernetes manifests (skip validation to avoid proxy/login redirects)
-                    sh "kubectl apply -f k8s/ --validate=false"
+                    sh "kubectl apply -f k8s/ --validate=false --request-timeout=60s"
                     
                     // Verify rollout status
                     sh "kubectl rollout status deployment/backend-deployment"

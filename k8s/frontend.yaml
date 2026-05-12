@@ -5,7 +5,7 @@ metadata:
   labels:
     app: careershield-frontend
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -22,7 +22,7 @@ spec:
       containers:
       - name: frontend
         image: prins05688/careershield-frontend:IMAGE_TAG
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
         resources:
