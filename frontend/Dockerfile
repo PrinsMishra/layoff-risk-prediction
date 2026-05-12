@@ -1,4 +1,5 @@
 # Stage 1: Build the React application
+# Pipeline Trigger Test: 2026-05-12 18:34
 FROM node:18-alpine AS builder
 
 WORKDIR /app
