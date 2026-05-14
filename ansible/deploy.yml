@@ -1,37 +1,13 @@
 ---
-- name: Deploy CareerShield to Kubernetes
+- name: Deploy CareerShield to Kubernetes using Roles
   hosts: localhost
-  connection: local
   gather_facts: false
 
   vars:
-    # These variables are overridden by Jenkins via `-e`
-    backend_image: "careershield-backend:latest"
-    frontend_image: "careershield-frontend:latest"
+    # Default values, can be overridden by Jenkins
+    backend_image: "prins05688/careershield-backend:latest"
+    frontend_image: "prins05688/careershield-frontend:latest"
     k8s_dir: "../k8s"
 
-  tasks:
-    - name: Ensure Kubernetes manifests are applied
-      command: kubectl apply -f {{ k8s_dir }}/{{ item }}
-      loop:
-        - elk.yaml
-        - backend.yaml
-        - frontend.yaml
-      register: apply_result
-      changed_when: "'created' in apply_result.stdout or 'configured' in apply_result.stdout"
-
-    - name: Rollout new Backend Image
-      command: kubectl set image deployment/backend-deployment backend={{ backend_image }}
-      register: backend_rollout
-      changed_when: "'image updated' in backend_rollout.stdout"
-
-    - name: Rollout new Frontend Image
-      command: kubectl set image deployment/frontend-deployment frontend={{ frontend_image }}
-      register: frontend_rollout
-      changed_when: "'image updated' in frontend_rollout.stdout"
-
-    - name: Verify Backend Rollout Status
-      command: kubectl rollout status deployment/backend-deployment --timeout=60s
-
-    - name: Verify Frontend Rollout Status
-      command: kubectl rollout status deployment/frontend-deployment --timeout=60s
+  roles:
+    - common

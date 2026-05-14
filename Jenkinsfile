@@ -134,22 +134,17 @@ pipeline {
         stage('10. Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Deploying Version ${VERSION} to Kubernetes Cluster..."
+                    echo "Deploying Version ${VERSION} to Kubernetes Cluster using Ansible Roles..."
                     sh "docker-compose down || true"
                     
-                    // Replace IMAGE_TAG placeholder with the current build version
-                    sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/backend.yaml"
-                    sh "sed -i 's|IMAGE_TAG|${VERSION}|g' k8s/frontend.yaml"
-                    
-                    // Apply all Kubernetes manifests (skip validation to avoid proxy/login redirects)
-                    sh "kubectl apply -f k8s/ --validate=false --request-timeout=60s"
-                    
-                    // Verify rollout status
-                    sh "kubectl rollout status deployment/backend-deployment"
-                    sh "kubectl rollout status deployment/frontend-deployment"
-                    
-                    // Restore placeholders for next run
-                    sh "git checkout k8s/backend.yaml k8s/frontend.yaml"
+                    // Run the Ansible Playbook
+                    sh """
+                    cd ansible
+                    ansible-playbook -i inventory.ini deploy.yml \
+                      -e "backend_image=${DOCKER_USER}/careershield-backend:${VERSION}" \
+                      -e "frontend_image=${DOCKER_USER}/careershield-frontend:${VERSION}" \
+                      -e "k8s_dir=../k8s"
+                    """
                 }
             }
         }
