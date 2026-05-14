@@ -42,9 +42,9 @@ spec:
           mountPath: /usr/share/logstash/pipeline/
         resources:
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
           requests:
-            memory: "256Mi"
+            memory: "512Mi"
 
       - name: kibana
         image: docker.elastic.co/kibana/kibana:8.11.3
@@ -55,9 +55,9 @@ spec:
           value: "http://localhost:9200"
         resources:
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
           requests:
-            memory: "256Mi"
+            memory: "512Mi"
       volumes:
       - name: config-volume
         configMap:

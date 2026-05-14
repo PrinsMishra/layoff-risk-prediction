@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: prins05688/careershield-frontend:IMAGE_TAG
+        image: prins05688/careershield-frontend:v42
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80

@@ -101,6 +101,28 @@ pipeline {
             }
         }
 
+        stage('8.5. Configure Vault Secrets') {
+            steps {
+                script {
+                    echo "Syncing Jenkins Secrets to HashiCorp Vault..."
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDS}", usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                        sh """
+                        # Get Vault Pod Name
+                        VAULT_POD=\$(kubectl get pods -l app=vault -o jsonpath='{.items[0].metadata.name}')
+                        
+                        # Enable KV secrets engine if not enabled (ignore error if already exists)
+                        kubectl exec \$VAULT_POD -- vault secrets enable -path=secret kv-v2 || true
+                        
+                        # Seed the secrets into Vault
+                        kubectl exec \$VAULT_POD -- vault kv put secret/careershield/dockerhub username="\$USER" password="\$PASS"
+                        
+                        echo "✅ Secrets successfully pushed to Vault!"
+                        """
+                    }
+                }
+            }
+        }
+
         stage('9. Test K8s Connection') {
             steps {
                 script {

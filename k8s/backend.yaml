@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: prins05688/careershield-backend:IMAGE_TAG
+        image: prins05688/careershield-backend:v42
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
@@ -43,6 +43,40 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        volumeMounts:
+        - name: vault-secrets
+          mountPath: /app/secrets
+
+      - name: vault-sidecar
+        image: hashicorp/vault:1.15
+        env:
+        - name: VAULT_ADDR
+          value: "http://vault-service:8200"
+        - name: VAULT_TOKEN
+          value: "root" # In production, this would be an AppRole token
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Waiting for vault-service...";
+            until vault status > /dev/null 2>&1; do sleep 2; done;
+            
+            echo "Vault is ready. Fetching secrets for CareerShield...";
+            
+            # Fetch the dockerhub secret and save it to the shared volume
+            vault kv get -field=password secret/careershield/dockerhub > /app/secrets/docker_password.txt;
+            vault kv get -field=username secret/careershield/dockerhub > /app/secrets/docker_username.txt;
+            
+            echo "✅ Secrets successfully injected into /app/secrets/";
+            
+            # Keep sidecar alive to maintain the volume
+            while true; do sleep 3600; done;
+        volumeMounts:
+        - name: vault-secrets
+          mountPath: /app/secrets
+
+      volumes:
+      - name: vault-secrets
+        emptyDir: {}
 
 ---
 apiVersion: v1
