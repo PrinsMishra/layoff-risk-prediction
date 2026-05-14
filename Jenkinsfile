@@ -110,11 +110,9 @@ pipeline {
                         # Get Vault Pod Name
                         VAULT_POD=\$(kubectl get pods -l app=vault -o jsonpath='{.items[0].metadata.name}')
                         
-                        # Enable KV secrets engine if not enabled (ignore error if already exists)
-                        kubectl exec \$VAULT_POD -- vault secrets enable -path=secret kv-v2 || true
-                        
-                        # Seed the secrets into Vault
-                        kubectl exec \$VAULT_POD -- vault kv put secret/careershield/dockerhub username="\$USER" password="\$PASS"
+                        # Seed the secrets into Vault (using the root token for authentication)
+                        kubectl exec \$VAULT_POD -- env VAULT_TOKEN=root VAULT_ADDR=http://127.0.0.1:8200 vault secrets enable -path=secret kv-v2 || true
+                        kubectl exec \$VAULT_POD -- env VAULT_TOKEN=root VAULT_ADDR=http://127.0.0.1:8200 vault kv put secret/careershield/dockerhub username="\$USER" password="\$PASS"
                         
                         echo "✅ Secrets successfully pushed to Vault!"
                         """
