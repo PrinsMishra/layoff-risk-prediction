@@ -60,6 +60,14 @@ class _JsonFormatter(logging.Formatter):
         return json.dumps(payload)
 
 
+from logging.handlers import DatagramHandler
+
+class JsonUdpHandler(DatagramHandler):
+    """Custom UDP handler that sends raw JSON strings instead of Python pickles."""
+    def makePickle(self, record):
+        return self.format(record).encode("utf-8")
+
+
 def _build_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
@@ -74,9 +82,8 @@ def _build_logger(name: str) -> logging.Logger:
     logstash_host = os.getenv("LOGSTASH_HOST")
     if logstash_host:
         try:
-            from logging.handlers import DatagramHandler
-            # Logstash is listening on UDP 12201
-            udp_handler = DatagramHandler(logstash_host, 12201)
+            # Use our custom JsonUdpHandler instead of standard DatagramHandler
+            udp_handler = JsonUdpHandler(logstash_host, 12201)
             udp_handler.setFormatter(_JsonFormatter())
             logger.addHandler(udp_handler)
         except Exception as e:
