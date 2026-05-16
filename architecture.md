@@ -19,15 +19,20 @@ graph TD
         F --> G
     end
 
+    %% Security & Config
+    R[(HashiCorp Vault)] <-->|Fetch/Seed Secrets| B
+    S[Ansible Roles] -->|Orchestrate Deploy| I
+
     %% Artifact Storage
     G -->|Push Images| H[(Docker Hub)]
 
     %% Deployment Layer
     subgraph Kubernetes_Cluster [Minikube Cluster]
         H -->|Pull Images| I[K8s Deployments]
-        I --> J[Frontend Pods x2]
-        I --> K[Backend Pods x2]
+        I --> J[Frontend Pods x1]
+        I --> K[Backend Pods x1]
         K -->|HPA| L{Scale Up/Down}
+        R -->|Sidecar Injection| K
     end
 
     %% Monitoring Layer
@@ -48,8 +53,10 @@ graph TD
 | Feature | Implementation |
 |---------|----------------|
 | **CI/CD** | Jenkins with conditional retraining logic |
+| **Config Management** | **Ansible Roles** for modular deployment orchestration |
+| **Secure Storage** | **HashiCorp Vault** with Sidecar Pattern for secret injection |
 | **Orchestration** | Kubernetes (Minikube) with Rolling Updates |
 | **Scalability** | Horizontal Pod Autoscaler (HPA) based on CPU |
-| **Observability** | ELK Stack with structured JSON logging & `/metrics` endpoint |
+| **Observability** | ELK Stack with structured JSON logging |
 | **Model Serving** | FastAPI with TensorFlow backend |
 | **Deployment** | Zero-downtime rolling updates |

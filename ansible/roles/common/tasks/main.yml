@@ -21,7 +21,7 @@
   changed_when: "'image updated' in frontend_rollout.stdout"
 
 - name: Verify Backend Rollout Status
-  command: kubectl rollout status deployment/backend-deployment --timeout=60s
+  command: kubectl rollout status deployment/backend-deployment --timeout=300s
 
 - name: Verify Frontend Rollout Status
-  command: kubectl rollout status deployment/frontend-deployment --timeout=60s
+  command: kubectl rollout status deployment/frontend-deployment --timeout=300s
