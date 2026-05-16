@@ -62,7 +62,7 @@ function App() {
         </div>
       </div>
       
-      {result && (result.risk_label === "HIGH" || result.risk_label === "MEDIUM") && (
+      {result && (
          <div style={{ marginTop: '2rem' }}>
            <CareerPath careerData={result.career_advice} />
          </div>
